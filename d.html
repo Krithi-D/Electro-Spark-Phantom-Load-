@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Smart Energy Monitor Dashboard</title>
+  <style>
+    :root {
+      --bg: #0f1116;
+      --surface: #151921;
+      --surface-alt: #1b2029;
+      --border: #262b33;
+      --fg: #e6e9ef;
+      --muted: #9aa0ab;
+      --accent: #4f46e5;
+      --accent-soft: rgba(79, 70, 229, 0.12);
+      --danger: #ef4444;
+      --danger-soft: rgba(239, 68, 68, 0.12);
+      --success: #22c55e;
+      --success-soft: rgba(34, 197, 94, 0.12);
+      --warn: #fbbf24;
+      --warn-soft: rgba(251, 191, 36, 0.12);
+      --radius: 14px;
+      --shadow: 0 8px 24px rgba(0,0,0,.15);
+      --font: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: var(--font);
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; text-decoration: none; }
+    .layout {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      min-height: 100vh;
+    }
+    /* Sidebar */
+    .sidebar {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 24px 18px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 1.1rem;
+    }
+    .brand .dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--accent);
+    }
+    .nav {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .nav a {
+      padding: 10px 12px;
+      border-radius: 8px;
+      color: var(--muted);
+    }
+    .nav a.active,
+    .nav a:hover {
+      background: var(--surface-alt);
+      color: var(--fg);
+    }
+    .sidebar footer {
+      margin-top: auto;
+      font-size: .82rem;
+      color: var(--muted);
+    }
+    /* Main */
+    main {
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+    .page-title {
+      font-size: 1.4rem;
+      font-weight: 600;
+    }
+    .grid {
+      display: grid;
+      gap: 16px;
+    }
+    .grid.kpis { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px 20px;
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .card-title {
+      font-weight: 600;
+      font-size: 1rem;
+    }
+    .muted { color: var(--muted); }
+    .kpi-value {
+      font-size: 1.8rem;
+      font-weight: 700;
+      margin-top: 6px;
+    }
+    .kpi-delta {
+      margin-top: 4px;
+      font-size: .85rem;
+    }
+    .delta-up { color: var(--success); }
+    .delta-down { color: var(--danger); }
+    /* Alert banner */
+    .alert {
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 500;
+      border: 1px solid transparent;
+    }
+    .alert.danger {
+      background: var(--danger-soft);
+      color: var(--danger);
+      border-color: rgba(239,68,68,.25);
+    }
+    .alert.warn {
+      background: var(--warn-soft);
+      color: var(--warn);
+      border-color: rgba(251,191,36,.25);
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: .75rem;
+      font-weight: 600;
+    }
+    .badge.success { background: var(--success-soft); color: var(--success);}
+    .badge.danger { background: var(--danger-soft); color: var(--danger);}
+    .badge.warn { background: var(--warn-soft); color: var(--warn);}
+    .badge.accent { background: var(--accent-soft); color: var(--accent);}
+    /* Fake chart placeholders */
+    .chart-placeholder {
+      height: 280px;
+      border: 2px dashed var(--border);
+      border-radius: calc(var(--radius) - 6px);
+      display: grid;
+      place-items: center;
+      color: var(--muted);
+      font-size: .9rem;
+    }
+    /* Device table */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .92rem;
+    }
+    th, td {
+      text-align: left;
+      padding: 10px 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    th {
+      color: var(--muted);
+      font-weight: 600;
+      font-size: .8rem;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    tr:last-child td { border-bottom: none; }
+    .pill {
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: .75rem;
+      font-weight: 600;
+      display: inline-block;
+    }
+    .pill.on { background: var(--success-soft); color: var(--success); }
+    .pill.off { background: var(--danger-soft); color: var(--danger); }
+    /* Toggle (CSS-only) */
+    .switch {
+      position: relative;
+      width: 44px;
+      height: 24px;
+    }
+    .switch input {
+      opacity: 0;
+      width: 0; height: 0;
+      position: absolute;
+    }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background: #374151;
+      transition: .2s;
+      border-radius: 999px;
+    }
+    .slider:before {
+      content: "";
+      position: absolute;
+      height: 18px; width: 18px;
+      left: 3px; top: 3px;
+      background: white;
+      transition: .2s;
+      border-radius: 50%;
+    }
+    .switch input:checked + .slider {
+      background: var(--accent);
+    }
+    .switch input:checked + .slider:before {
+      transform: translateX(20px);
+    }
+    /* Tabs (pure CSS) */
+    .tabs {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    .tabs input { display: none; }
+    .tabs label {
+      padding: 6px 10px;
+      border: 1px solid var(--border);
+      background: var(--surface-alt);
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: .85rem;
+    }
+    .tabs input:checked + label {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    .tab-content {
+      display: none;
+    }
+    #tab-day:checked ~ .tab-day,
+    #tab-week:checked ~ .tab-week,
+    #tab-month:checked ~ .tab-month {
+      display: block;
+    }
+    /* Lists */
+    .list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .list li {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface-alt);
+    }
+    .tag {
+      font-size: .72rem;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 2px 8px;
+    }
+    /* Footer */
+    .footer {
+      margin-top: 6px;
+      text-align: center;
+      color: var(--muted);
+      font-size: .82rem;
+      padding: 24px 0;
+    }
+    /* Responsive */
+    @media(max-width: 980px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+      .sidebar {
+        position: relative;
+        height: auto;
+        flex-direction: row;
+        gap: 12px;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+      }
+      .sidebar .nav {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .sidebar footer { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="dot"></span> Smart Energy Monitor
+      </div>
+
+      <nav class="nav">
+        <a href="#" class="active">Dashboard</a>
+        <a href="#devices">Devices</a>
+        <a href="#alerts">Alerts</a>
+        <a href="#ai">AI Insights</a>
+        <a href="#voice">Voice</a>
+        <a href="#settings">Settings</a>
+      </nav>
+
+      <footer>
+        v1.0 • HTML/CSS only<br />
+        Wire your data & logic later.
+      </footer>
+    </aside>
+
+    <!-- MAIN -->
+    <main>
+      <h1 class="page-title">AI‑Enhanced Smart Energy Distribution Monitor</h1>
+
+      <!-- Alert Banner (toggle class danger/warn/success as needed) -->
+      <div class="alert danger" role="alert" id="phantom-alert">
+        ⚡ Phantom load detected on 3 devices – estimated waste: ₹2.4/hr. Auto-cutoff is ON.
+      </div>
+
+      <!-- KPIs -->
+      <section class="grid kpis">
+        <div class="card">
+          <div class="muted">Energy Today</div>
+          <div class="kpi-value">12.84 kWh</div>
+          <div class="kpi-delta delta-down">▼ 8% vs yesterday</div>
+        </div>
+        <div class="card">
+          <div class="muted">Phantom Load Share</div>
+          <div class="kpi-value">7.2%</div>
+          <div class="kpi-delta delta-up">▲ +1.1% vs avg</div>
+        </div>
+        <div class="card">
+          <div class="muted">Cost Today</div>
+          <div class="kpi-value">₹96.40</div>
+          <div class="kpi-delta delta-down">▼ ₹12 saved by AI</div>
+        </div>
+        <div class="card">
+          <div class="muted">Devices On</div>
+          <div class="kpi-value">9 / 22</div>
+          <div class="kpi-delta">Auto-cutoff: <span class="badge success">Enabled</span></div>
+        </div>
+      </section>
+
+      <!-- Real-time chart -->
+      <section class="card">
+        <div class="card-header">
+          <div class="card-title">Current Consumption (Amps) vs Time</div>
+          <span class="badge accent">Live</span>
+        </div>
+        <!-- ThingSpeak Current Graph -->
+        <iframe 
+          width="100%" 
+          height="260" 
+          src="https://thingspeak.com/channels/3009419/charts/1?bgcolor=%23151921&color=%23e6e9ef&dynamic=true&results=60&title=Current+Consumption+(Amps)&type=line&xaxis=Time&yaxis=Amps&api_key=45UMVD1UTL0CWA98"
+          frameborder="0"
+          style="border-radius: calc(var(--radius) - 6px);"
+        ></iframe>
+      </section>
+
+      <!-- Device Controls -->
+      <section class="card" id="devices">
+        <div class="card-header">
+          <div class="card-title">Device Controls (Smart Relays)</div>
+          <span class="muted">Auto phantom-cut in place</span>
+        </div>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Device</th>
+                <th>Current (A)</th>
+                <th>Power (W)</th>
+                <th>Status</th>
+                <th>Auto-Cutoff</th>
+                <th>Last Event</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>TV + Set-top Box</td>
+                <td>0.09</td>
+                <td>18.4</td>
+                <td><span class="pill off">OFF</span></td>
+                <td>
+                  <label class="switch">
+                    <input type="checkbox" checked />
+                    <span class="slider"></span>
+                  </label>
+                </td>
+                <td>2 mins ago</td>
+              </tr>
+              <tr>
+                <td>Phone Chargers (Cluster)</td>
+                <td>0.06</td>
+                <td>12.2</td>
+                <td><span class="pill off">OFF</span></td>
+                <td>
+                  <label class="switch">
+                    <input type="checkbox" checked />
+                    <span class="slider"></span>
+                  </label>
+                </td>
+                <td>5 mins ago</td>
+              </tr>
+              <tr>
+                <td>Refrigerator</td>
+                <td>1.42</td>
+                <td>310.0</td>
+                <td><span class="pill on">ON</span></td>
+                <td>
+                  <label class="switch">
+                    <input type="checkbox" />
+                    <span class="slider"></span>
+                  </label>
+                </td>
+                <td>12 mins ago</td>
+              </tr>
+              <tr>
+                <td>Washing Machine</td>
+                <td>0.00</td>
+                <td>0.0</td>
+                <td><span class="pill off">OFF</span></td>
+                <td>
+                  <label class="switch">
+                    <input type="checkbox" checked />
+                    <span class="slider"></span>
+                  </label>
+                </td>
+                <td>1 hour ago</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- AI Insights -->
+      <section class="card" id="ai">
+        <div class="card-header">
+          <div class="card-title">AI Insights</div>
+          <span class="badge accent">ML Models Live</span>
+        </div>
+        <ul class="list">
+          <li>
+            <span class="badge warn">Phantom</span>
+            <div>
+              <strong>3 phantom loads</strong> detected with average standby draw of 30.6W (₹2.4/hr). Suggested: schedule nightly auto-cut at 11:00 PM.
+            </div>
+          </li>
+          <li>
+            <span class="badge success">Forecast</span>
+            <div>
+              Expected **peak consumption** between <strong>7–9 PM</strong>. Predicted total today: <strong>14.1 kWh</strong> (±6%).
+            </div>
+          </li>
+          <li>
+            <span class="badge danger">Fault</span>
+            <div>
+              Irregular current spike pattern on **Circuit #2** (ESP32-02). Consider inspecting relay contacts.
+            </div>
+          </li>
+        </ul>
+      </section>
+
+      <!-- Voice Assistant Status -->
+      <section class="card" id="voice">
+        <div class="card-header">
+          <div class="card-title">Voice Assistant Integration</div>
+        </div>
+        <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px;">
+          <div class="card" style="background: var(--surface-alt);">
+            <div class="card-header">
+              <div class="card-title">Google Home</div>
+              <span class="badge success">Connected</span>
+            </div>
+            <p class="muted">Voice alerts & commands active.</p>
+          </div>
+          <div class="card" style="background: var(--surface-alt);">
+            <div class="card-header">
+              <div class="card-title">Alexa</div>
+              <span class="badge warn">Limited</span>
+            </div>
+            <p class="muted">Skill enabled, alerts only. Control API pending.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Alerts log -->
+      <section class="card" id="alerts">
+        <div class="card-header">
+          <div class="card-title">Recent Alerts</div>
+        </div>
+        <ul class="list">
+          <li>
+            <span class="badge danger">Critical</span>
+            <div>
+              Phantom load surge on TV cluster. Auto-cut applied.
+              <div class="muted" style="font-size:.8rem;">2 mins ago</div>
+            </div>
+          </li>
+          <li>
+            <span class="badge warn">Warning</span>
+            <div>
+              Consumption spike detected 7–9 PM expected. Forecast push alert scheduled.
+              <div class="muted" style="font-size:.8rem;">1 hour ago</div>
+            </div>
+          </li>
+          <li>
+            <span class="badge success">Info</span>
+            <div>
+              Model retrained on last 14 days of data (phantom detection F1: 0.91).
+              <div class="muted" style="font-size:.8rem;">Yesterday</div>
+            </div>
+          </li>
+        </ul>
+      </section>
+
+      <div class="footer">
+        © 2025 Smart Energy Monitor • Built for Raspberry Pi + ESP32 + MQTT + AI
+      </div>
+    </main>
+  </div>
+</body>
+</html>
